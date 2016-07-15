@@ -31,6 +31,7 @@ namespace NutzCode.Libraries.Web
         public bool HasRange { get; set; } = false;
         public long RangeStart { get; set; } = 0;
         public long RangeEnd { get; set; } = long.MaxValue;
+
         public object RequestCallbackParameter { get; set; } = null;
         public object ErrorCallbackParameter { get; set; } = null;
 
@@ -46,6 +47,15 @@ namespace NutzCode.Libraries.Web
             return n;
         }
 
+        public virtual HttpMessageHandler GetHttpMessageHandler()
+        {
+            return new HttpClientHandler();
+        }
+
+        public virtual HttpClientHandler GetHttpClientHandler(WebStream ws)
+        {
+            return (HttpClientHandler)ws.Handler;
+        }
         public async Task PostProcessRequest(WebStream w)
         {
            if (RequestCallback!=null)

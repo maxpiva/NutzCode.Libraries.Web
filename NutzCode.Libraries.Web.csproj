@@ -54,6 +54,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IStreamFactory.cs" />
     <Compile Include="StreamProvider\ActiveStreamCache.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="SeekableWebStream.cs" />
@@ -67,6 +68,7 @@
     <Compile Include="StreamProvider\WebDataProvider.cs" />
     <Compile Include="WebParameters.cs" />
     <Compile Include="WebStream.cs" />
+    <Compile Include="WebStreamFactory.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
