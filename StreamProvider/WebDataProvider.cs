@@ -129,7 +129,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
 #if TRACE
                             else
                             {
-                                Console.WriteLine("PREFETCH: " + cachekey + " OFFSET: " + nblock*BlockSize + " LENGTH: " + roffset);
+                                //Console.WriteLine("PREFETCH: " + cachekey + " OFFSET: " + nblock*BlockSize + " LENGTH: " + roffset);
 
                             }
 #endif
