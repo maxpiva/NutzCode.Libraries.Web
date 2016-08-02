@@ -71,7 +71,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
                         if (res == null)
                         {
                             SeekableWebParameters wb = webParameterResolver(blockposition*BlockSize);
-                            WebStream s = await WebStream.CreateStream(wb, token);
+                            WebStream s = await WebStreamFactory.Instance.CreateStreamAsync(wb, token);
                             if ((s.StatusCode != HttpStatusCode.OK) && (s.StatusCode != HttpStatusCode.PartialContent))
                             {
                                 _streamLocker.RemoveActive(key, blockposition);
