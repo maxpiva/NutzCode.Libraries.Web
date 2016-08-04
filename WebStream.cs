@@ -37,7 +37,7 @@ namespace NutzCode.Libraries.Web
 
         static WebStream()
         {
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Ssl3;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             ServicePointManager.DefaultConnectionLimit = 48;
         }
 
@@ -141,7 +141,7 @@ namespace NutzCode.Libraries.Web
         }
 
 
-        internal static async Task<string> GetUrlAsync<T,S>(S wb, string postData, string encoding, string uagent = "", Dictionary<string, string> headers = null) where T : WebStream where S : WebParameters
+        internal static async Task<string> GetUrlAsync<T,S>(S wb, string postData, string encoding, string uagent = "", Dictionary<string, string> headers = null) where T : WebStream, new() where S : WebParameters
         {
             wb.Encoding = string.IsNullOrEmpty(encoding) ? Encoding.UTF8 : Encoding.GetEncoding(encoding);
             if (!string.IsNullOrEmpty(postData))
@@ -158,14 +158,14 @@ namespace NutzCode.Libraries.Web
             return await wab.ToTextAsync();
         }
 
-        internal static async Task<T> CreateStreamAsync<T,S>(S pars, CancellationToken token = new CancellationToken()) where T : WebStream where S : WebParameters
+        internal static async Task<T> CreateStreamAsync<T,S>(S pars, CancellationToken token = new CancellationToken()) where T : WebStream, new() where S : WebParameters
         {
             Stopwatch sw = new Stopwatch();
             sw.Start();
             int numretries = 0;
             do
             {
-                T w = await InternalCreateStream(default(T), pars, token);
+                T w = await InternalCreateStream(new T(), pars, token);
                 bool ret = false;
                 if (w.StatusCode != HttpStatusCode.OK)
                     ret = await pars.ProcessError(w);

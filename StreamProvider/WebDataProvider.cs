@@ -32,6 +32,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
             int orgoffset=offset;
             int orglength=length;
 #endif
+            //int retries = 3;
 
             //TODO Cancel any read when disposing
             if (_disposed)
@@ -98,6 +99,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
                                 }
                                 if (l == 0)
                                 {
+//                                    retries--;
                                     _streamLocker.RemoveActive(res.File, res.StartBlock);
                                     res.Stream.Dispose();
                                     isDisposed = true;
