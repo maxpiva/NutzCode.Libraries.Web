@@ -3,7 +3,7 @@
 namespace NutzCode.Libraries.Web.StreamProvider
 {
     // ReSharper disable once InconsistentNaming
-    internal class LRUCacheItem<T,TS>
+    public class LRUCacheItem<T,TS>
     {
         public LRUCacheItem(T k, TS v)
         {

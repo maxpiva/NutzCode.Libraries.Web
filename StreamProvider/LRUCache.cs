@@ -13,15 +13,14 @@ namespace NutzCode.Libraries.Web.StreamProvider
     // ReSharper disable once InconsistentNaming
     public class LRUCache<T,TS> : IDisposable
     {
-        private readonly int _capacity;
-        private readonly Dictionary<T, LinkedListNode<LRUCacheItem<T, TS>>> _cacheMap = new Dictionary<T, LinkedListNode<LRUCacheItem<T, TS>>>();
-        private readonly LinkedList<LRUCacheItem<T, TS>> _lruList = new LinkedList<LRUCacheItem<T, TS>>();
+        internal readonly int _capacity;
+        protected Dictionary<T, LinkedListNode<LRUCacheItem<T, TS>>> _cacheMap = new Dictionary<T, LinkedListNode<LRUCacheItem<T, TS>>>();
+        protected readonly LinkedList<LRUCacheItem<T, TS>> _lruList = new LinkedList<LRUCacheItem<T, TS>>();
 
         public LRUCache(int capacity)
         {
             _capacity = capacity;
         }
-
         public TS this[T key]
         {
             [MethodImpl(MethodImplOptions.Synchronized)]
@@ -41,6 +40,11 @@ namespace NutzCode.Libraries.Web.StreamProvider
             set
             {
                 LinkedListNode<LRUCacheItem<T, TS>> node;
+                if (_cacheMap.TryGetValue(key, out node))
+                {
+                    _lruList.Remove(node);
+                    _cacheMap.Remove(node.Value.Key);
+                }
                 if (_cacheMap.Count >= _capacity)
                 {
                      node = _lruList.First;
