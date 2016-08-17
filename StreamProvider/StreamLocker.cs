@@ -46,9 +46,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
         {
             lock (_lock)
             {
-                return _activeStreams.Keys.FirstOrDefault(a =>
-                    a.Item1 == file && a.Item2 >= blockposition &&
-                    a.Item2 <= blockposition + maxBlockDistance) != null;
+                return _activeStreams.Keys.FirstOrDefault(a => a.Item1 == file && a.Item2 >= blockposition && a.Item2 <= blockposition + maxBlockDistance) != null;
             }
         }
 
@@ -71,11 +69,11 @@ namespace NutzCode.Libraries.Web.StreamProvider
 
 
 
-        public void ReturnStreamAndMakeItInactive(StreamInfo info)
+        public void ReturnStreamAndMakeItInactive(long oldblock, StreamInfo info)
         {
             lock (_lock)
             {
-                _activeStreams.Remove(info.File, info.StartBlock);
+                _activeStreams.Remove(info.File, oldblock);
                 if (info.Stream.ContentLength != info.Stream.Position)
                     _inactiveStreams[Tuple.Create(info.File, info.CurrentBlock)] = info.Stream;
                 else

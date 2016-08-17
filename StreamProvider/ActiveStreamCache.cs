@@ -28,10 +28,9 @@ namespace NutzCode.Libraries.Web.StreamProvider
             Tuple<string, long> k = Keys.FirstOrDefault(a => a.Item1 == key && a.Item2 == block);
             if (k == null)
                 return null;
-            if (this[k] != null)
-                return this[k];
-            return null;
-
+            WebStream w = this[k];
+            Remove(k);
+            return w;       
         }
 
     }

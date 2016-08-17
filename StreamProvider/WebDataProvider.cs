@@ -61,7 +61,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
                 }
                 else
                 {
-                    if (_streamLocker.IsActive(key, blockposition, MaxBlockDistance))
+                    if (_streamLocker.IsActive(key, blockposition, MaxBlockDistance)) //TODO Add Timeout
                     {
                         await Task.Delay(20, token);
                     }
@@ -80,6 +80,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
                             }
                             res = _streamLocker.AddNewStreamAndMakeItActive(key, blockposition, s);
                         }
+                        long keyblock = res.CurrentBlock;
                         bool isDisposed = false;
                         do
                         {
@@ -92,6 +93,8 @@ namespace NutzCode.Libraries.Web.StreamProvider
                                 try
                                 {
                                     l = await res.Stream.ReadAsync(data, roffset, reqsize, token);
+
+
                                 }
                                 catch (Exception)
                                 {
@@ -100,7 +103,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
                                 if (l == 0)
                                 {
 //                                    retries--;
-                                    _streamLocker.RemoveActive(res.File, res.StartBlock);
+                                    _streamLocker.RemoveActive(res.File, keyblock);
                                     res.Stream.Dispose();
                                     isDisposed = true;
                                     reqsize = 0;
@@ -122,7 +125,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
                                     Array.Copy(data, blockoffset, buffer, offset, dr);
 #if TRACE
                                 Console.WriteLine("COPYING: " + cachekey + " OFFSET: " + position + " LENGTH: " + dr);
-    #endif
+#endif
                                     length -= dr;
                                     position += dr;
                                     offset += dr;
@@ -139,7 +142,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
                             }
                         } while (res.CurrentBlock <= blockposition && !isDisposed);
                         if (!isDisposed)
-                            _streamLocker.ReturnStreamAndMakeItInactive(res);
+                            _streamLocker.ReturnStreamAndMakeItInactive(keyblock, res);
                     }
                 }
             }
