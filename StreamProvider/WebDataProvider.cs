@@ -105,6 +105,8 @@ namespace NutzCode.Libraries.Web.StreamProvider
                                 }
                             } while (res.CurrentBlock <= blockposition && !res.Faulted);
                         }
+                        else
+                            await Task.Delay(20, token); //Wait 20 ms before checking again
                     }
                     /*
                     if (_streamLocker.IsActive(key, blockposition, MaxBlockDistance)) //TODO Add Timeout, this is a walking timebomb.

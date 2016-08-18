@@ -60,10 +60,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
                     }
                 }
                 else
-                {
-                    await Task.Delay(20, token);
                     return new StreamInfo(); //Empty One
-                }
             }
             if (info == null)
             {
