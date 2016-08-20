@@ -58,7 +58,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
                             return await WebStreamFactory.Instance.CreateStreamAsync(wb, tok);
                         },token))
                     {
-                        if (!res.IsEmpty) // If res.isEmpty means someone else have the stream active, we try to get the data from the cache.
+                        if (!res.IsEmpty) // If res.isEmpty means someone else have the stream active, we try to get the data from the cache in the next pass.
                         {
                             do
                             {
