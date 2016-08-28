@@ -167,7 +167,7 @@ namespace NutzCode.Libraries.Web
             {
                 T w = await InternalCreateStream(new T(), pars, token);
                 bool ret = false;
-                if (w.StatusCode != HttpStatusCode.OK)
+                if (w.StatusCode != HttpStatusCode.OK && w.StatusCode!=HttpStatusCode.PartialContent)
                     ret = await pars.ProcessError(w);
                 if (!ret)
                 {
@@ -324,6 +324,16 @@ namespace NutzCode.Libraries.Web
                 wb.ContentType = wb.Response.Content.Headers.ContentType.MediaType;
                 wb.ContentEncoding = wb.Response.Content.Headers.ContentEncoding.ToString();
                 wb.ContentLength = wb.Response.Content.Headers.ContentLength ?? 0;
+                if (wb.ContentLength == 0)
+                {
+                    //IIS will return ContentLength == 0 when you ask a partial content till the end of file, this will get back our content length
+                    if (wb.Response.Content.Headers.ContentRange != null &&
+                        wb.Response.Content.Headers.ContentRange.HasRange && wb.Response.Content.Headers.ContentRange.From.HasValue && wb.Response.Content.Headers.ContentRange.To.HasValue)
+                    {
+                        wb.ContentLength = wb.Response.Content.Headers.ContentRange.To.Value -
+                                           wb.Response.Content.Headers.ContentRange.From.Value + 1;
+                    }
+                }
                 ParseCookies(pars, wb);
                 ParseHeaders(wb);
                 wb.StatusCode = wb.Response.StatusCode;

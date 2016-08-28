@@ -62,7 +62,8 @@ namespace NutzCode.Libraries.Web.StreamProvider
                         {
                             do
                             {
-                                int reqsize = (int) Math.Min(res.Stream.ContentLength - res.Stream.Position, BlockSize);
+                                
+                                int reqsize = (int) Math.Min(res.Stream.ContentLength - res.Stream.Position, BlockSize);                                    
                                 data = new byte[reqsize];
                                 int roffset = 0;
                                 while (reqsize > 0)
