@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 
 namespace NutzCode.Libraries.Web
 {
-    public interface IStreamFactory<T> where T : WebParameters
+    public interface IStreamFactory
     {
-        Task<WebStream> CreateStreamAsync(T pars, CancellationToken token = new CancellationToken());
+        Task<WebStream> CreateStreamAsync(WebParameters pars, CancellationToken token = new CancellationToken());
         Task<string> GetUrlAsync(string url, string postData, string encoding, string uagent = "", Dictionary<string, string> headers = null);
-        T CreateWebParameters(Uri uri);
+        WebParameters CreateWebParameters(Uri uri);
     }
 }

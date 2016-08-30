@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace NutzCode.Libraries.Web
 {
-    public class WebStreamFactory : IStreamFactory<WebParameters>
+    public class WebStreamFactory : IStreamFactory
     {
         public static WebStreamFactory Instance { get; }=new WebStreamFactory();
         public async Task<WebStream> CreateStreamAsync(WebParameters pars, CancellationToken token = new CancellationToken())
