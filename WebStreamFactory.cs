@@ -15,8 +15,12 @@ namespace NutzCode.Libraries.Web
 
         public async Task<string> GetUrlAsync(string url, string postData, string encoding, string uagent = "", Dictionary<string, string> headers = null)
         {
-            WebParameters pars = new WebParameters(new Uri(url));
-            return await WebStream.GetUrlAsync<WebStream, WebParameters>(pars, postData, encoding, uagent, headers);
+            return await WebStream.GetUrlAsync<WebStream, WebParameters>(CreateWebParameters(new Uri(url)), postData, encoding, uagent, headers);
+        }
+
+        public WebParameters CreateWebParameters(Uri uri)
+        {
+            return new WebParameters(uri);
         }
     }
 }

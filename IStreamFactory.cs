@@ -11,5 +11,6 @@ namespace NutzCode.Libraries.Web
     {
         Task<WebStream> CreateStreamAsync(T pars, CancellationToken token = new CancellationToken());
         Task<string> GetUrlAsync(string url, string postData, string encoding, string uagent = "", Dictionary<string, string> headers = null);
+        T CreateWebParameters(Uri uri);
     }
 }
