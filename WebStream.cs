@@ -283,7 +283,7 @@ namespace NutzCode.Libraries.Web
             }
         }
 
-        internal static async Task<T> InternalCreateStream<T>(T wb, WebParameters pars, CancellationToken token = new CancellationToken()) where T : WebStream
+        internal static async Task<T> InternalCreateStream<T>(T wb, WebParameters pars, CancellationToken token = new CancellationToken()) where T : WebStream, new()
         {
             try
             {
@@ -346,7 +346,7 @@ namespace NutzCode.Libraries.Web
             catch (Exception)
             {
                 wb?.Dispose();
-                wb = default(T);
+                wb = new T();
                 wb.StatusCode = HttpStatusCode.RequestTimeout;
                 return wb;
             }
