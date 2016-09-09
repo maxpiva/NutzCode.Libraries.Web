@@ -169,6 +169,8 @@ namespace NutzCode.Libraries.Web
                 bool ret = false;
                 if (w.StatusCode != HttpStatusCode.OK && w.StatusCode!=HttpStatusCode.PartialContent)
                     ret = await pars.ProcessError(w);
+                if (!pars.SolidRequest && !ret)
+                    return w;
                 if (!ret)
                 {
                     if (((int)w.StatusCode >= 500) || (w.StatusCode == HttpStatusCode.RequestTimeout))
@@ -181,8 +183,7 @@ namespace NutzCode.Libraries.Web
                     else
                         return w;
                 }
-                if (!pars.SolidRequest && !ret)
-                    return w;
+
                 numretries++;
             } while (true);
         }
