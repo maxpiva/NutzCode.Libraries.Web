@@ -397,7 +397,7 @@ namespace NutzCode.Libraries.Web
         public static string PostFromDictionary(this Dictionary<string, string> dict)
         {
             return String.Join("&",
-                dict.Select(a => HttpUtility.UrlEncode(a.Key) + "=" + HttpUtility.UrlEncode(a.Value)));
+                dict.Select(a => WebUtility.UrlEncode(a.Key) + "=" + WebUtility.UrlEncode(a.Value)));
         }
 
         public static Dictionary<string, string> ToDictionary(this CookieCollection coll)
