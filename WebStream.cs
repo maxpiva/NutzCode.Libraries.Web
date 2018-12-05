@@ -19,7 +19,7 @@ namespace NutzCode.Libraries.Web
 {
     public class WebStream : Stream, IDisposable
     {
-        public CookieCollection Cookies { get; set; }
+        public List<Cookie> Cookies { get; set; }
         public NameValueCollection Headers { get; private set; }
         public string ContentType { get; private set; }
         public string ContentEncoding { get; private set; }
@@ -28,9 +28,7 @@ namespace NutzCode.Libraries.Web
         public WebParameters WebParameters { get; set; }
         public bool IsRedirect { get; set; } = false;
         public HttpResponseMessage Response { get; set;}
-        public HttpClient Client { get; set; }
         public HttpRequestMessage Request { get; set; }
-        public HttpMessageHandler Handler { get; set; }
 
         private Stream _baseStream;
         private long _position;
@@ -51,13 +49,9 @@ namespace NutzCode.Libraries.Web
                 _baseStream?.Dispose();
                 Response?.Dispose();
                 Request?.Dispose();
-                Handler?.Dispose();
-                Client?.Dispose();
                 _baseStream = null;
                 Response = null;
                 Request = null;
-                Handler = null;
-                Client = null;
             }
         }
         public new void Dispose()
@@ -100,7 +94,7 @@ namespace NutzCode.Libraries.Web
         {
             if (_baseStream == null)
                 return 0;
-            int cnt= await _baseStream.ReadAsync(buffer, offset, count, cancellationToken);
+            int cnt= await _baseStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
             _position += cnt;
             return cnt;
         }
@@ -141,7 +135,7 @@ namespace NutzCode.Libraries.Web
         }
 
 
-        internal static async Task<string> GetUrlAsync<T,S>(S wb, string postData, string encoding, string uagent = "", Dictionary<string, string> headers = null) where T : WebStream, new() where S : WebParameters
+        internal static async Task<string> GetUrlAsync<T,S>(S wb, string postData, string encoding, string uagent = "", Dictionary<string, string> headers = null,CancellationToken token=default(CancellationToken)) where T : WebStream, new() where S : WebParameters
         {
             wb.Encoding = string.IsNullOrEmpty(encoding) ? Encoding.UTF8 : Encoding.GetEncoding(encoding);
             if (!string.IsNullOrEmpty(postData))
@@ -154,8 +148,8 @@ namespace NutzCode.Libraries.Web
                 foreach (string n in headers.Keys)
                     wb.Headers.Add(n, headers[n]);
             }
-            T wab = await CreateStreamAsync<T,S>(wb);
-            return await wab.ToTextAsync();
+            T wab = await CreateStreamAsync<T,S>(wb,token).ConfigureAwait(false);
+            return await wab.ToTextAsync().ConfigureAwait(false);
         }
 
         internal static async Task<T> CreateStreamAsync<T,S>(S pars, CancellationToken token = new CancellationToken()) where T : WebStream, new() where S : WebParameters
@@ -165,20 +159,20 @@ namespace NutzCode.Libraries.Web
             int numretries = 0;
             do
             {
-                T w = await InternalCreateStream(new T(), pars, token);
+                T w = await InternalCreateStreamAsync(new T(), pars, token).ConfigureAwait(false);
                 bool ret = false;
-                if (w.StatusCode != HttpStatusCode.OK && w.StatusCode!=HttpStatusCode.PartialContent)
-                    ret = await pars.ProcessError(w);
+                if (!pars.ValidHttpStatus.Contains(w.StatusCode))
+                    ret = await pars.ProcessErrorAsync(w,token).ConfigureAwait(false);
                 if (!pars.SolidRequest && !ret)
                     return w;
                 if (!ret)
                 {
-                    if (((int)w.StatusCode >= 500) || (w.StatusCode == HttpStatusCode.RequestTimeout))
+                    if (pars.BackOffHttpStatus.Contains(w.StatusCode))
                     {
                         if (sw.ElapsedMilliseconds > pars.SolidRequestTimeoutInMilliseconds)
                             return w;
                         w.Dispose();
-                        await BackOff(numretries);
+                        await BackOffAsync(numretries,token).ConfigureAwait(false);
                     }
                     else
                         return w;
@@ -188,11 +182,11 @@ namespace NutzCode.Libraries.Web
             } while (true);
         }
 
-        private static async Task BackOff(int numRetry)
+        private static async Task BackOffAsync(int numRetry,CancellationToken token)
         {
             Random r = new Random();
             int ms = r.Next(0, (2 ^ Math.Min(numRetry, 8)) * 1000);
-            await Task.Delay(ms);
+            await Task.Delay(ms,token).ConfigureAwait(false);
         }
 
         private static void ParseCookies(WebParameters pars, WebStream wb)
@@ -204,36 +198,23 @@ namespace NutzCode.Libraries.Web
                 {
                     IEnumerable<string> sss;
                     wb.Response.Headers.TryGetValues("Set-Cookie", out sss);
-                    wb.Cookies = new CookieCollection();
                     if (sss != null)
                     {
-                        foreach (string value in sss)
-                        {
-                            foreach (var singleCookie in value.Split(','))
-                            {
-                                Match match = Regex.Match(singleCookie, "(.+?)=(.+?);");
-                                if (match.Captures.Count == 0)
-                                    continue;
-                                wb.Cookies.Add(new Cookie(match.Groups[1].ToString(), match.Groups[2].ToString(), "/", wb.Request.RequestUri.Host.Split(':')[0]));
-                            }
-                        }
+                        wb.Cookies = CookieExtensions.GetHttpCookies(sss, wb.Request.RequestUri.Host.Split(':')[0]);
                     }
                     if (pars.Cookies != null && pars.Cookies.Count > 0)
                     {
                         foreach (Cookie c in pars.Cookies)
                         {
-                            bool found = false;
                             foreach (Cookie d in wb.Cookies)
                             {
-                                if (d.Name == c.Name)
-
+                                if (d.Name == c.Name && d.Domain == c.Domain && d.Path==c.Path)
                                 {
-                                    found = true;
+                                    wb.Cookies.Remove(d);
                                     break;
                                 }
                             }
-                            if (!found)
-                                wb.Cookies.Add(c);
+                            wb.Cookies.Add(c);
                         }
                     }
                 }
@@ -268,23 +249,15 @@ namespace NutzCode.Libraries.Web
             }
         }
 
-        private static void PopulateCookies(WebParameters pars, WebStream wb, string host)
+        private static void PopulateCookies(WebParameters pars, WebStream wb)
         {
             if (pars.Cookies != null && pars.Cookies.Count > 0)
             {
-                HttpClientHandler cl = pars.GetHttpClientHandler(wb);
-
-                cl.CookieContainer = new CookieContainer();
-                foreach (Cookie c in pars.Cookies)
-                {
-                    if (string.IsNullOrEmpty(c.Domain))
-                        c.Domain = host;
-                    cl.CookieContainer.Add(c);
-                }
+                wb.Request.Headers.Add("Cookie", string.Join("; ", pars.Cookies));
             }
         }
 
-        internal static async Task<T> InternalCreateStream<T>(T wb, WebParameters pars, CancellationToken token = new CancellationToken()) where T : WebStream, new()
+        internal static async Task<T> InternalCreateStreamAsync<T>(T wb, WebParameters pars, CancellationToken token = new CancellationToken()) where T : WebStream, new()
         {
             try
             {
@@ -295,6 +268,7 @@ namespace NutzCode.Libraries.Web
                 if ((pars.Method == HttpMethod.Get) && (pars.PostData != null))
                     pars.Method = HttpMethod.Post;
                 wb.Request = new HttpRequestMessage(pars.Method, url);
+               
                 if (!string.IsNullOrEmpty(pars.UserAgent))
                     wb.Request.Headers.UserAgent.ParseAdd(pars.UserAgent);
                 if (pars.PostData != null)
@@ -308,20 +282,11 @@ namespace NutzCode.Libraries.Web
                     PopulateHeaders(wb.Request, pars.Headers);
                 if (referer != null)
                     wb.Request.Headers.Referrer = referer;
-                wb.Handler = pars.GetHttpMessageHandler();
-                HttpClientHandler cl = pars.GetHttpClientHandler(wb);
-                cl.AllowAutoRedirect = pars.AutoRedirect;
-                if (pars.AutoDecompress)
-                    cl.AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip;
-                PopulateCookies(pars, wb, bas.Host);
-                if (pars.Proxy != null)
-                    cl.Proxy = pars.Proxy;
-                wb.Client = new HttpClient(wb.Handler);
-                wb.Client.Timeout = TimeSpan.FromMilliseconds(pars.TimeoutInMilliseconds);
-                await pars.PostProcessRequest(wb);
-                wb.Response = await wb.Client.SendAsync(wb.Request, HttpCompletionOption.ResponseHeadersRead, token);
+                PopulateCookies(pars, wb);
+                await pars.PostProcessRequestAsync(wb,token).ConfigureAwait(false);
+                wb.Response = await pars.HttpClient.SendAsync(wb.Request, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
                 token.ThrowIfCancellationRequested();
-                wb._baseStream = await wb.Response.Content.ReadAsStreamAsync();
+                wb._baseStream = await wb.Response.Content.ReadAsStreamAsync().ConfigureAwait(false);
                 wb.ContentType = wb.Response.Content.Headers.ContentType.MediaType;
                 wb.ContentEncoding = wb.Response.Content.Headers.ContentEncoding.ToString();
                 wb.ContentLength = wb.Response.Content.Headers.ContentLength ?? 0;
@@ -352,10 +317,9 @@ namespace NutzCode.Libraries.Web
                 return wb;
             }
         }
-        internal static async Task<WebStream> InternalCreateStream(WebParameters pars, CancellationToken token = new CancellationToken())
+        internal static Task<WebStream> InternalCreateStreamAsync(WebParameters pars, CancellationToken token = new CancellationToken())
         {
-            WebStream wb = new WebStream();
-            return await InternalCreateStream(wb, pars, token);
+            return InternalCreateStreamAsync(new WebStream(), pars, token);
         }
 
         private static void PopulateHeaders(HttpRequestMessage msg, NameValueCollection headers)
@@ -400,15 +364,7 @@ namespace NutzCode.Libraries.Web
                 dict.Select(a => WebUtility.UrlEncode(a.Key) + "=" + WebUtility.UrlEncode(a.Value)));
         }
 
-        public static Dictionary<string, string> ToDictionary(this CookieCollection coll)
-        {
-            Dictionary<string, string> data = new Dictionary<string, string>();
-            foreach (Cookie c in coll)
-            {
-                data.Add(c.Name, c.Value);
-            }
-            return data;
-        }
+
 
         public static string ToText(this WebStream wb)
         {
@@ -420,16 +376,18 @@ namespace NutzCode.Libraries.Web
                 return reader.ReadToEnd();
             }
         }
-        public static async Task<string> ToTextAsync(this WebStream wb)
+#pragma warning disable CRR0035
+        public static Task<string> ToTextAsync(this WebStream wb)
         {
             Encoding enc = Encoding.UTF8;
             if (!string.IsNullOrEmpty(wb.ContentEncoding))
                 enc = Encoding.GetEncoding(wb.ContentEncoding);
             using (StreamReader reader = new StreamReader(wb, enc))
             {
-                return await reader.ReadToEndAsync();
+                return reader.ReadToEndAsync();
             }
         }
+#pragma warning restore CRR0035
 
     }
 }

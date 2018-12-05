@@ -25,7 +25,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
         }
 
 
-        public async Task<int> Read(string key, Func<long, SeekableWebParameters> webParameterResolver, long maxsize, long position, byte[] buffer, int offset, int length, CancellationToken token)
+        public async Task<int> ReadAsync(string key, Func<long, SeekableWebParameters> webParameterResolver, long maxsize, long position, byte[] buffer, int offset, int length, CancellationToken token)
         {
             //TODO Cancel any read when disposing
             if (_disposed)
@@ -51,12 +51,12 @@ namespace NutzCode.Libraries.Web.StreamProvider
                 }
                 else
                 {
-                    using (StreamInfo res = await _streamLocker.GetOrCreateActiveStream(key, blockposition, MaxBlockDistance,
-                        async (tok) =>
+                    using (StreamInfo res = await _streamLocker.GetOrCreateActiveStreamAsync(key, blockposition, MaxBlockDistance,
+                        (tok) =>
                         {
                             SeekableWebParameters wb = webParameterResolver(blockposition*BlockSize);
-                            return await WebStreamFactory.Instance.CreateStreamAsync(wb, tok);
-                        },token))
+                            return WebStreamFactory.Instance.CreateStreamAsync(wb, tok);
+                        },token).ConfigureAwait(false))
                     {
                         if (!res.IsEmpty) // If res.isEmpty means someone else have the stream active, we try to get the data from the cache in the next pass.
                         {
@@ -71,7 +71,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
                                     int l;
                                     try
                                     {
-                                        l = await res.Stream.ReadAsync(data, roffset, reqsize, token);
+                                        l = await res.Stream.ReadAsync(data, roffset, reqsize, token).ConfigureAwait(false);
                                     }
                                     catch (Exception)
                                     {
@@ -107,7 +107,7 @@ namespace NutzCode.Libraries.Web.StreamProvider
                             } while (res.CurrentBlock <= blockposition && !res.Faulted);
                         }
                         else
-                            await Task.Delay(20, token); //Wait 20 ms before checking again
+                            await Task.Delay(20, token).ConfigureAwait(false); //Wait 20 ms before checking again
                     }
                     /*
                     if (_streamLocker.IsActive(key, blockposition, MaxBlockDistance)) //TODO Add Timeout, this is a walking timebomb.

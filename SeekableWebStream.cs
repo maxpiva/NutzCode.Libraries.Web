@@ -63,13 +63,13 @@ namespace NutzCode.Libraries.Web
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            return Task.Run(() => ReadAsync(buffer, offset, count, new CancellationToken())).Result;
+            return Task.Run(async () => await ReadAsync(buffer, offset, count, new CancellationToken()).ConfigureAwait(false)).GetAwaiter().GetResult();
         }
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             if (count == 0)
                 return 0;
-            int cnt = await _provider.Read(_key, _resolver, _length, _position, buffer, offset, count, cancellationToken);
+            int cnt = await _provider.ReadAsync(_key, _resolver, _length, _position, buffer, offset, count, cancellationToken).ConfigureAwait(false);
             _position += cnt;
             return cnt;
         }

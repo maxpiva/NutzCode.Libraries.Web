@@ -41,10 +41,10 @@ namespace NutzCode.Libraries.Web.StreamProvider
 
 
         
-        public async Task<StreamInfo> GetOrCreateActiveStream(string key, long blockposition, int maxBlockDistance, Func<CancellationToken, Task<WebStream>> create, CancellationToken token)
+        public async Task<StreamInfo> GetOrCreateActiveStreamAsync(string key, long blockposition, int maxBlockDistance, Func<CancellationToken, Task<WebStream>> CreateAsync, CancellationToken token)
         {
             StreamInfo info=null;
-            using (await _rw.WriterLockAsync(token))
+            using (await _rw.WriterLockAsync(token).ConfigureAwait(false))
             {
                 if (!_activeStreams.Keys.Any(a => a.Item1 == key && a.Item2 >= blockposition && a.Item2 <= blockposition + maxBlockDistance))
                 {
@@ -64,16 +64,16 @@ namespace NutzCode.Libraries.Web.StreamProvider
             }
             if (info == null)
             {
-                WebStream s = await create(token);
+                WebStream s = await CreateAsync(token).ConfigureAwait(false);
                 if ((s.StatusCode != HttpStatusCode.OK) && (s.StatusCode != HttpStatusCode.PartialContent))
                 {
-                    using (await _rw.WriterLockAsync(token))
+                    using (await _rw.WriterLockAsync(token).ConfigureAwait(false))
                     {
                         _activeStreams.Remove(key, blockposition);
                     }
                     throw new IOException("Http Status (" + s.StatusCode + ")");
                 }
-                using (await _rw.WriterLockAsync(token))
+                using (await _rw.WriterLockAsync(token).ConfigureAwait(false))
                 {
                     _activeStreams[Tuple.Create(key, blockposition)] = s;
                     info=new StreamInfo(this, key, s, blockposition);
