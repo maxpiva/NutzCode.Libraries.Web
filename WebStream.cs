@@ -200,7 +200,7 @@ namespace NutzCode.Libraries.Web
                     wb.Response.Headers.TryGetValues("Set-Cookie", out sss);
                     if (sss != null)
                     {
-                        wb.Cookies = CookieExtensions.GetHttpCookies(sss, wb.Request.RequestUri.Host.Split(':')[0]);
+                        wb.Cookies = sss.GetHttpCookies(wb.Request.RequestUri.Host.Split(':')[0]);
                     }
                     if (pars.Cookies != null && pars.Cookies.Count > 0)
                     {

@@ -9,10 +9,69 @@ using System.Threading.Tasks;
 
 namespace NutzCode.Libraries.Web
 {
-    public class WebParameters
+    public class WebParameters : IDisposable
     {
-        public virtual HttpClient HttpClient { get; } 
-        public virtual HttpClientHandler HttpClientHandler { get; }
+        public class HttpClientInfo
+        {
+            public HttpClient Client;
+            public HttpClientHandler Handler;
+            public int Count;
+        }
+
+        private static Dictionary<string, HttpClientInfo> _httpClients = new Dictionary<string, HttpClientInfo>();
+        
+        private (HttpClient, HttpClientHandler) Create(HttpClientHandler handler=null)
+        {
+            lock(_httpClients)
+            {
+                HttpClientInfo info;
+                if (_httpClients.ContainsKey(Key))
+                {
+                    info = _httpClients[Key];
+                    info.Count++;
+                    return (info.Client, info.Handler);
+                }
+                handler = handler ?? new HttpClientHandler() { AllowAutoRedirect = true, AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip, MaxConnectionsPerServer = 48 };
+                handler.UseCookies = false;
+                HttpClient cl = new HttpClient(handler);
+                info = new HttpClientInfo();
+                info.Client = cl;
+                info.Handler = handler;
+                info.Count = 1;
+                _httpClients[Key] = info;
+                return (cl, handler);
+            }
+        }
+
+        public HttpClient HttpClient
+        {
+            get
+            {
+                lock(_httpClients)
+                {
+                    if (_httpClients.ContainsKey(Key))
+                        return _httpClients[Key].Client;
+                    return null;
+                }
+            }
+        }
+        public HttpClientHandler HttpClientHandler
+        {
+            get
+            {
+                lock (_httpClients)
+                {
+                    if (_httpClients.ContainsKey(Key))
+                        return _httpClients[Key].Handler;
+                    return null;
+                }
+            }
+
+        }
+
+        private bool _disposed = false;
+
+        public string Key { get; private set; }
         public Uri Url { get; set; }
         public byte[] PostData { get; set; } = null;
         public Encoding Encoding { get; set; } = Encoding.UTF8;
@@ -57,25 +116,12 @@ namespace NutzCode.Libraries.Web
         public object RequestCallbackParameter { get; set; } = null;
         public object ErrorCallbackParameter { get; set; } = null;
 
-        public WebParameters(Uri url, Func<WebParameters, HttpClient> httpClientFactory, HttpClientHandler handler=null)
+        public WebParameters(Uri url, string uniquehttpclientkey, HttpClientHandler handler=null)
         {
             Url = url;
-            HttpClientHandler = handler ?? new HttpClientHandler() { AllowAutoRedirect = true, AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip, MaxConnectionsPerServer = 48 };
-            HttpClient = httpClientFactory(this);
-            handler.UseCookies = false; //Custom Handling
+            Key = uniquehttpclientkey;
+            Create(handler);
         }
-
-        internal WebParameters()
-        {
-
-        }
-        public virtual WebParameters Clone()
-        {
-            WebParameters n=new WebParameters();
-            this.CopyTo(n);
-            return n;
-        }
-
 
         public Task PostProcessRequestAsync(WebStream w, CancellationToken token=default(CancellationToken))
         {
@@ -86,5 +132,29 @@ namespace NutzCode.Libraries.Web
             return ErrorCallback?.Invoke(w,ErrorCallbackParameter,token) ?? Task.FromResult(false);
         }
 
+        public void Dispose()
+        {
+            lock (_httpClients)
+            {
+                _disposed = true;
+                if (_httpClients.ContainsKey(Key))
+                {
+                    HttpClientInfo info = _httpClients[Key];
+                    info.Count--;
+                    if (info.Count == 0)
+                    {
+                        info.Client?.Dispose();
+                        info.Client = null;
+                        _httpClients.Remove(Key);
+                    }
+                }
+
+            }
+        }
+        ~WebParameters()
+        {
+            if (!_disposed) //Make Sure we release the httpClientCount
+                Dispose();
+        }
     }
 }

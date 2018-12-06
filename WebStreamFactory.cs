@@ -14,14 +14,14 @@ namespace NutzCode.Libraries.Web
             return WebStream.CreateStreamAsync<WebStream, WebParameters>(pars, token);
         }
 
-        public Task<string> GetUrlAsync(string url, Func<WebParameters, HttpClient> httpClientFactory, string postData, string encoding, string uagent = "", Dictionary<string, string> headers = null, CancellationToken token = default(CancellationToken))
+        public Task<string> GetUrlAsync(string url, string uniqueHttpKey, string postData, string encoding, string uagent = "", Dictionary<string, string> headers = null, CancellationToken token = default(CancellationToken))
         {
-            return WebStream.GetUrlAsync<WebStream, WebParameters>(CreateWebParameters(new Uri(url), httpClientFactory), postData, encoding, uagent, headers, token);
+            return WebStream.GetUrlAsync<WebStream, WebParameters>(CreateWebParameters(new Uri(url), uniqueHttpKey), postData, encoding, uagent, headers, token);
         }
 
-        public WebParameters CreateWebParameters(Uri uri, Func<WebParameters, HttpClient> httpClientFactory)
+        public WebParameters CreateWebParameters(Uri uri, string uniqueHttpKey)
         {
-            return new WebParameters(uri,httpClientFactory);
+            return new WebParameters(uri, uniqueHttpKey);
         }
     }
 }
